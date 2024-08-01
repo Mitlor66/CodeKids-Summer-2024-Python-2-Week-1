@@ -59,13 +59,14 @@ def range_revision():
 
 # TicTacToe
 
+import random
+
 class Board:
     def __init__(self):
         print("Board creation in progress")
         self.board = [[" ", " ", " "],
                       [" ", " ", " "],
                       [" ", " ", " "]]
-
 
     def display(self):
         print("      0    1    2    ")
@@ -75,51 +76,44 @@ class Board:
             n = n + 1
 
     def row_win(self):
-        if self.board[0][0] == self.board[0][1] == self.board[0][2] == "X":
-            return True
-        elif self.board[0][0] == self.board[0][1] == self.board[0][2] == "O":
-            return True
-        # Do it for row 1 and row 2
-        if self.board[1][0] == self.board[1][1] == self.board[1][2] == "X":
-            return True
-        elif self.board[1][0] == self.board[1][1] == self.board[1][2] == "O":
-            return True
-        if self.board[2][0] == self.board[2][1] == self.board[2][2] == "X":
-            return True
-        elif self.board[2][0] == self.board[2][1] == self.board[2][2] == "O":
-            return True
+        for i in range(3):
+            if self.board[i][0] == self.board[i][1] == self.board[i][2] != " ":
+                return True
+        return False
 
-    def row_win_optimized(self):
-        for i in range(0, 3):
-            if self.board[i][0] == self.board[i][1] == self.board[i][2] == "X":
+    def col_win(self):
+        for i in range(3):
+            if self.board[0][i] == self.board[1][i] == self.board[2][i] != " ":
                 return True
-            elif self.board[i][0] == self.board[i][1] == self.board[i][2] == "O":
-                return True
-    
-    
+        return False
+
+    def dia_win(self):
+        if self.board[0][0] == self.board[1][1] == self.board[2][2] != " ":
+            return True
+        if self.board[0][2] == self.board[1][1] == self.board[2][0] != " ":
+            return True
+        return False
+
+    def check_win(self):
+        return self.row_win() or self.col_win() or self.dia_win()
+
+    def full_board(self):
+        for row in self.board:
+            if " " in row:
+                return False
+        return True
+
 class Player:
     def __init__(self, username, token):
         self.username = username
         self.token = token
 
     def play(self, board):
-        row = input("Enter a row number: ")
-        row = int(row)
-        col = input("Enter a col number: ")
-        col = int(col)
-        # We also need to check that the row and col numbers are between 0 and 2
-        # If they are, carry on with the code, otherwise, print an error message
-        # and stop the code
-        if row < 0 or row > 2:
-            print("Sorry, invalid row number")
+        row = int(input("Enter a row number: "))
+        col = int(input("Enter a col number: "))
+        if row < 0 or row > 2 or col < 0 or col > 2:
+            print("Sorry, invalid row or column number")
             return False
-        elif col < 0 or col > 2:
-            print("Sorry, invalid col number")
-            return False
-        
-        # Add an if statement that will check if the board at that position is
-        # equal to " ". If it is, play there
-        # Else, display an error message.
         if board[row][col] == " ":
             board[row][col] = self.token
             return True
@@ -127,42 +121,82 @@ class Player:
             print("Sorry, this spot is already taken")
             return False
 
+class AI(Player):
+    def __init__(self, username, token):
+        super().__init__(username, token)
 
+    def play(self, board):
+        # Check for winning move
+        if self.find_best_move(board, self.token):
+            return True
+        
+        # Check for blocking move
+        opponent_token = "O" if self.token == "X" else "X"
+        if self.find_best_move(board, opponent_token):
+            return True
+        
+        # Take a random empty spot
+        empty_spots = [(i, j) for i in range(3) for j in range(3) if board[i][j] == " "]
+        if empty_spots:
+            row, col = random.choice(empty_spots)
+            board[row][col] = self.token
+            return True
+
+    def find_best_move(self, board, token):
+        for i in range(3):
+            for j in range(3):
+                if board[i][j] == " ":
+                    board[i][j] = token
+                    if self.check_win(board):
+                        if token == self.token:
+                            return True
+                        else:
+                            board[i][j] = self.token
+                            return True
+                    board[i][j] = " "
+        return False
+
+    def check_win(self, board):
+        for i in range(3):
+            if board[i][0] == board[i][1] == board[i][2] != " ":
+                return True
+            if board[0][i] == board[1][i] == board[2][i] != " ":
+                return True
+        if board[0][0] == board[1][1] == board[2][2] != " ":
+            return True
+        if board[0][2] == board[1][1] == board[2][0] != " ":
+            return True
+        return False
 
 tictactoe = Board()
-p1 = Player("Mitlor", "X")
-p2 = Player("John", "O")
-print(f"Welcome to our two players {p1.username} and {p2.username}")
-
+p1 = Player("Player 1", "X")
+ai = AI("Computer", "O")
+print(f"Welcome to our two players {p1.username} and {ai.username}")
+print("You are the 'X' player")
+tictactoe.display()
 while True:
-    # P1's turn
-    while(p1.play(tictactoe.board) == False): pass
+    # Player's turn
+    while not p1.play(tictactoe.board):
+        pass
     tictactoe.display()
-    if tictactoe.row_win() == True:
+    if tictactoe.check_win():
         print(f"{p1.username} won the game!!")
         break
+    if tictactoe.full_board():
+        print("The game is a tie!")
+        break
 
-    # P2's turn
-    while(p2.play(tictactoe.board) == False): pass
+    # AI's turn
+    ai.play(tictactoe.board)
     tictactoe.display()
-    if tictactoe.row_win() == True:
-        print(f"{p2.username} won the game!!")
+    if tictactoe.check_win():
+        print(f"{ai.username} won the game!!")
+        break
+    if tictactoe.full_board():
+        print("The game is a tie!")
         break
 
 
-
-
-"""
-Homework
-Please complete the code by adding the check for the col_win() and
-dia_win()
-You will also have to add the code in the while loop at the bottom to
-take these new checks into consideration.
-When playing the game with all the checks, you should see that when someone
-wins, it will stop the game. But what about when the board is full?
-How would you handle this problem? Be creative and I will provide a solution
-tomorrow.
-"""
 
 
 
